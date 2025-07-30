@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TattooFest WebApp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #0088cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Добро пожаловать, <span id="user-name">Гость</span>!</h1>
+        <p>Это Telegram WebApp для фестиваля татуировок.</p>
+        <button onclick="sendData()">Отправить тестовые данные</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        
+        // Показываем имя пользователя Telegram
+        document.getElementById('user-name').textContent = 
+            tg.initDataUnsafe.user?.first_name || "Гость";
+
+        // Отправка данных в ваше Flask-приложение
+        function sendData() {
+            fetch('/api/data', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'test', platform: 'telegram'})
+            })
+            .then(response => response.json())
+            .then(data => {
+                tg.showAlert(`Ответ сервера: ${data.status}`);
+            });
+        }
+
+        // Растягиваем WebApp на весь экран
+        tg.expand();
+    </script>
+</body>
+</html>
