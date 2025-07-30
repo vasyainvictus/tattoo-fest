@@ -42,4 +42,15 @@ def create_app(config_class=Config):
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp)
 
+ # ======= Telegram WebApp ========
+    @app.route('/webapp')
+    def webapp():
+        return render_template('webapp.html')
+
+    @app.route('/api/data', methods=['POST'])
+    def handle_telegram_data():
+        data = request.json
+        # Здесь можно добавить логику обработки данных от Telegram
+        return jsonify({"status": "success", "data": data})
+    
     return app
