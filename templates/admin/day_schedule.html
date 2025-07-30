@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}Управление расписанием: {{ day.date.strftime('%d.%m.%Y') }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 30px auto; padding: 20px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Управление расписанием: {{ day.date.strftime('%d %B %Y') }}</h1>
+        <a href="{{ url_for('admin.manage_festival_details', festival_id=day.festival_id) }}" class="btn btn-outline-secondary btn-hover">Назад к дням</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'info' %}alert-info{% else %}alert-success{% endif %}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h4>Текущее расписание</h4>
+    {% if grouped_slots %}
+    <table class="table table-bordered" style="font-size: 0.95em;">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 12%;">Время</th>
+                <th style="width: 30%;">Событие/Конкурс</th>
+                <th>Категория/Детали</th>
+                <th class="text-center">Заявок</th>
+                <th class="text-center">Судей</th>
+                <th class="text-center" style="width: 20%;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for time, slots_in_time in grouped_slots %}
+                {% for slot in slots_in_time %}
+                <tr>
+                    {% if loop.first %}
+                        <td rowspan="{{ slots_in_time|length }}"><strong>{{ time }}</strong></td>
+                    {% endif %}
+                    <td>
+                        {% if slot.type == 'judging' %}
+                            <strong>{{ slot.nomination_template.name }}</strong><br>
+                            <span class="text-muted small">Зона: {{ slot.zone or 'Не указана' }}</span>
+                        {% elif slot.type == 'award' %}
+                            <!-- ▼▼▼ ИЗМЕНЕНИЕ В ТАБЛИЦЕ ▼▼▼ -->
+                            <strong>Награждение</strong><br>
+                            <span class="text-muted small">Зона: {{ slot.zone or 'Не указана' }}</span>
+                        {% else %}
+                            <strong>Событие</strong>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if slot.type == 'judging' %}
+                            {{ CATEGORY_MAP.get(slot.category, slot.category) }}
+                        {% elif slot.type == 'award' %}
+                            <!-- ▼▼▼ ИЗМЕНЕНИЕ В ТАБЛИЦЕ ▼▼▼ -->
+                            {% if slot.category %}
+                                {{ CATEGORY_MAP.get(slot.category, 'Категория не указана') }}
+                            {% else %}
+                                <span class="text-muted">Категория не указана</span>
+                            {% endif %}
+                        {% else %}
+                            {{ slot.event_title }}
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ slot.participants|length if slot.type == 'judging' else '-' }}</td>
+                    <td class="text-center">{{ slot.judge_assignments|length if slot.type == 'judging' else '-' }}</td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            {% if slot.type == 'judging' %}
+                                <a href="{{ url_for('admin.manage_slot_participants', slot_id=slot.id) }}" class="btn btn-info btn-sm text-white">Участники</a>
+                                <a href="{{ url_for('admin.manage_slot_judges', slot_id=slot.id) }}" class="btn btn-primary btn-sm">Судьи</a>
+                            {% endif %}
+                            <a href="{{ url_for('admin.edit_slot', slot_id=slot.id) }}" class="btn btn-warning btn-sm text-dark">⚙️</a>
+                            <form action="{{ url_for('admin.delete_slot', slot_id=slot.id) }}" method="post" onsubmit="return confirm('Удалить этот слот?');">
+                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="text-center text-muted mb-4">Расписание для этого дня еще не составлено.</p>
+    {% endif %}
+
+    <div class="bg-light p-4 rounded">
+        <h4>Добавить новый слот в расписание</h4>
+        <form method="post" id="addSlotForm">
+            <div class="row mb-3 g-3">
+                <div class="col-md-2">
+                    <label for="start_time" class="form-label">Начало</label>
+                    <input type="time" name="start_time" required class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label for="end_time" class="form-label">Конец</label>
+                    <input type="time" name="end_time" required class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="slot_type" class="form-label">Тип слота</label>
+                    <select id="slot_type" name="type" required class="form-select">
+                        <option value="judging" selected>Судейство (Конкурс)</option>
+                        <option value="award">Награждение</option>
+                        <option value="event">Событие</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ▼▼▼ БЛОК СУДЕЙСТВА (ИЗМЕНЕНЫ ИМЕНА ПОЛЕЙ)▼▼▼ -->
+            <div id="judging-fields" class="mb-3">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label for="judging_nomination_template_id" class="form-label">Шаблон номинации</label>
+                        <select name="nomination_template_id" id="judging_nomination_template_id" class="form-select">
+                            <option value="">-- Выберите шаблон --</option>
+                            {% for template in nomination_templates %}
+                                <option value="{{ template.id }}">{{ template.name }} ({{ CATEGORY_MAP.get(template.participant_type, template.participant_type)}})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="judging_category" class="form-label">Категория работы</label>
+                        <select name="category" id="judging_category" class="form-select">
+                            <option value="">-- Выберите категорию --</option>
+                            <option value="fresh">Битва</option>
+                            <option value="healed">Зажившая</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="judging_zone" class="form-label">Зона</label>
+                        <select name="zone" id="judging_zone" class="form-select">
+                            <option value="">-- Зона --</option>
+                            {% for z in ZONES %}
+                                <option value="{{ z }}">{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ▼▼▼ БЛОК НАГРАЖДЕНИЯ (ПОЛНОСТЬЮ ПЕРЕРАБОТАН) ▼▼▼ -->
+            <div id="award-fields" class="mb-3" style="display: none;">
+                 <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="award_category" class="form-label">Категория награждения</label>
+                        <select name="category" id="award_category" class="form-select">
+                            <option value="">-- Выберите категорию --</option>
+                            <option value="fresh">Битва</option>
+                            <option value="healed">Зажившая</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="award_zone" class="form-label">Зона</label>
+                        <select name="zone" id="award_zone" class="form-select">
+                            <option value="">-- Зона --</option>
+                            {% for z in ZONES %}
+                                <option value="{{ z }}">{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ▼▼▼ БЛОК СОБЫТИЯ (БЕЗ ИЗМЕНЕНИЙ) ▼▼▼ -->
+            <div id="event-fields" style="display: none;">
+                <label for="event_title" class="form-label">Название события</label>
+                <input type="text" name="event_title" class="form-control">
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">Добавить слот</button>
+        </form>
+    </div>
+</div>
+
+<!-- ▼▼▼ JAVASCRIPT (ПОЛНОСТЬЮ ПЕРЕПИСАН) ▼▼▼ -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeSelect = document.getElementById('slot_type');
+        const judgingFields = document.getElementById('judging-fields');
+        const awardFields = document.getElementById('award-fields');
+        const eventFields = document.getElementById('event-fields');
+
+        // Находим все инпуты и селекты в каждом блоке
+        const judgingInputs = judgingFields.querySelectorAll('input, select');
+        const awardInputs = awardFields.querySelectorAll('input, select');
+        const eventInputs = eventFields.querySelectorAll('input, select');
+
+        function toggleFields() {
+            const selectedType = typeSelect.value;
+
+            // Сначала скрываем все и деактивируем все инпуты
+            judgingFields.style.display = 'none';
+            judgingInputs.forEach(input => input.disabled = true);
+            
+            awardFields.style.display = 'none';
+            awardInputs.forEach(input => input.disabled = true);
+
+            eventFields.style.display = 'none';
+            eventInputs.forEach(input => input.disabled = true);
+
+            // Затем показываем нужный блок и активируем его инпуты
+            if (selectedType === 'judging') {
+                judgingFields.style.display = 'block';
+                judgingInputs.forEach(input => input.disabled = false);
+            } else if (selectedType === 'award') {
+                awardFields.style.display = 'block';
+                awardInputs.forEach(input => input.disabled = false);
+            } else if (selectedType === 'event') {
+                eventFields.style.display = 'block';
+                eventInputs.forEach(input => input.disabled = false);
+            }
+        }
+
+        typeSelect.addEventListener('change', toggleFields);
+        toggleFields(); // Вызываем при загрузке страницы, чтобы установить правильное начальное состояние
+    });
+</script>
+{% endblock %}

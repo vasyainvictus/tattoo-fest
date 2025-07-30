@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 30px auto; padding: 20px;">
+    <h2 style="margin-bottom: 20px;">Управление пользователями</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="padding: 10px 15px; margin: 15px 0; border-radius: 5px; background-color: {% if category == 'error' %}#f8d7da{% else %}#d4edda{% endif %}; color: #000;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h4 style="margin-bottom: 15px;">Добавить нового пользователя</h4>
+        <form method="POST" action="{{ url_for('admin.manage_users') }}" style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <input type="text" name="code" placeholder="Код (напр. 100002)" required style="flex: 1; padding: 8px;">
+            <input type="text" name="nickname" placeholder="Никнейм (необязательно)" style="flex: 1; padding: 8px;">
+            <select name="role" required style="padding: 8px;">
+                <option value="" disabled selected>Выберите роль</option>
+                <option value="participant">Участник</option>
+                <option value="judge">Судья</option>
+                <option value="admin">Администратор</option>
+            </select>
+            <select name="experience_category" style="padding: 8px;">
+                <option value="" disabled selected>Категория опыта (для участника)</option>
+                <option value="junior">Юниор</option>
+                <option value="pro">Про</option>
+            </select>
+            <button type="submit"
+                style="padding: 8px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; height: 38px; min-width: 100px; transition: background 0.2s;"
+                onmouseover="this.style.backgroundColor='#218838'" onmouseout="this.style.backgroundColor='#28a745'">
+                Создать
+            </button>
+        </form>
+    </div>
+
+    <h4>Список пользователей</h4>
+    <table style="width: 100%; border-collapse: collapse; text-align: center;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th style="padding: 10px;">Никнейм</th>
+                <th style="padding: 10px;">Код</th>
+                <th style="padding: 10px;">Роль</th>
+                <th style="padding: 10px;">Категория</th>
+                <th style="padding: 10px;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">{{ user.nickname or '—' }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">{{ user.code }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">{{ CATEGORY_MAP.get(user.role) }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">{{ CATEGORY_MAP.get(user.experience_category, '-') }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
+    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; min-width: 220px;">
+        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
+           style="min-width: 100px; height: 38px; background-color: white; color: #ffc107; border: 2px solid #ffc107; border-radius: 5px; text-decoration: none; display: flex; justify-content: center; align-items: center; transition: 0.2s;"
+           onmouseover="this.style.backgroundColor='#ffc107'; this.style.color='white'"
+           onmouseout="this.style.backgroundColor='white'; this.style.color='#ffc107'">
+            Изменить
+        </a>
+        {% if user.id != 1 %}
+        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" style="margin: 0;">
+            <button type="submit"
+                    onclick="return confirm('Вы уверены, что хотите удалить этого пользователя?');"
+                    style="min-width: 100px; height: 38px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s;"
+                    onmouseover="this.style.backgroundColor='#c82333'"
+                    onmouseout="this.style.backgroundColor='#dc3545'">
+                Удалить
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</td>
+
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="padding: 15px; color: #777;">Пользователи не найдены.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="text-end mt-4">
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-hover">Вернуться на главную</a>
+    </div>
+</div>
+{% endblock %}

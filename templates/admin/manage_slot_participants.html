@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Участники конкурса: {{ contest_slot.nomination_template.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 30px auto; padding: 20px;">
+
+    <a href="{{ url_for('admin.manage_day_schedule', day_id=contest_slot.day_id) }}"
+       class="btn btn-outline-secondary btn-hover mb-3">
+        ← Назад к расписанию
+    </a>
+
+    <h1 class="mb-1">Участники конкурса</h1>
+    <h3 class="text-primary mt-1">{{ contest_slot.nomination_template.name }}</h3>
+    <h5 class="text-muted mt-0">
+        Категория: <strong>{{ CATEGORY_MAP.get(contest_slot.category, contest_slot.category) }}</strong>|
+        День: <strong>{{ contest_slot.day.date.strftime('%d.%m.%Y') }}</strong> |
+        Тип: <strong>{{ CATEGORY_MAP.get(contest_slot.nomination_template.participant_type, contest_slot.nomination_template.participant_type) }}</strong>
+    </h5>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="border rounded p-3 bg-light">
+                <h5 class="mb-3">Зарегистрированные заявки ({{ contest_slot.participants|length }})</h5>
+                {% if contest_slot.participants %}
+                    <ul class="list-group">
+                        {% for p in contest_slot.participants | sort(attribute='user.code') | sort(attribute='entry_number') %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>{{ p.user.nickname or p.user.code }}{% if p.entry_number > 1 %}/{{ p.entry_number }}{% endif %}</strong>
+                                    <small class="text-muted">({{ CATEGORY_MAP.get(p.user.experience_category, p.user.experience_category) }})</small>
+                                </span>
+                                <form action="{{ url_for('admin.delete_participation', participation_id=p.id) }}" method="POST" onsubmit="return confirm('Удалить заявку {{ p.user.code }}/{{ p.entry_number }}?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mt-3">В этом конкурсе пока нет ни одной заявки.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="border rounded p-4 bg-light">
+                <h5 class="mb-3">Добавить заявку</h5>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">Выберите участника:</label>
+                        <select id="user_id" name="user_id" class="form-select" required>
+                            <option value="" disabled selected>-- Доступные участники --</option>
+                            {% for user in available_participants %}
+                                <option value="{{ user.id }}">{{ user.nickname or user.code }} ({{ CATEGORY_MAP.get(user.experience_category, user.experience_category) }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Добавить заявку</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

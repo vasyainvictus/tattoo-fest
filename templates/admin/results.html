@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Результаты и Назначение Победителей{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Результаты и Назначение Победителей</h1>
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">На главную</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'info' %}alert-info{% else %}alert-success{% endif %}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="accordion" id="daysAccordion">
+        {% for day, contests in results_by_day.items()|sort(attribute='0.date') %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-day-{{ day.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-day-{{ day.id }}">
+                    <strong>День {{ day.day_order }} - {{ day.date.strftime('%d.%m.%Y') }}</strong>
+                </button>
+            </h2>
+            <div id="collapse-day-{{ day.id }}" class="accordion-collapse collapse" data-bs-parent="#daysAccordion">
+                <div class="accordion-body">
+                    <div class="accordion" id="contestsAccordion-{{ day.id }}">
+                        {% for result in contests %}
+                            {% set contest = result.contest %}
+                            {% set criteria_list = result.criteria_list %}
+                            
+                            <div class="accordion-item mb-3">
+                                <h2 class="accordion-header" id="heading-contest-{{ contest.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-contest-{{ contest.id }}">
+                                        {{ contest.nomination_template.name }} ({{ CATEGORY_MAP.get(contest.category, contest.category) }})
+                                    </button>
+                                </h2>
+                                <div id="collapse-contest-{{ contest.id }}" class="accordion-collapse collapse" data-bs-parent="#contestsAccordion-{{ day.id }}">
+                                    <div class="accordion-body">
+                                        
+                                        {% for exp_category in ['pro', 'junior'] %}
+                                            {% set participants = result[exp_category ~ '_participants_data'] %}
+                                            {% if participants %}
+                                            <div class="p-3 border rounded mb-4">
+                                                <h4 class="mb-3">{{ 'Профи' if exp_category == 'pro' else 'Юниоры' }}</h4>
+                                                
+                                                <!-- Форма назначения победителей -->
+                                                <form action="{{ url_for('admin.assign_winners') }}" method="POST" class="bg-light p-3 rounded mb-3">
+    <input type="hidden" name="contest_id" value="{{ contest.id }}">
+    <input type="hidden" name="experience_category" value="{{ exp_category }}">
+    
+    <h5>Назначить победителя:</h5>
+    <div class="row align-items-end g-3">
+        <!-- ▼▼▼ ИЗМЕНЕННЫЙ БЛОК ▼▼▼ -->
+        <div class="col-md-4">
+            <label class="form-label fw-bold">1 место:</label>
+            <select name="place_1" class="form-select">
+                <option value="">-- Не выбрано --</option>
+                {% for p_data in participants %}
+                    {# Находим ID участника, который уже подтвержден на 1-м месте #}
+                    {% set current_winner_id = 0 %}
+                    {% for p2_data in participants if p2_data.confirmed_place == 1 %}{% set current_winner_id = p2_data.participation.id %}{% endfor %}
+                    <option value="{{ p_data.participation.id }}" {{ 'selected' if current_winner_id == p_data.participation.id }}>
+                        {{ p_data.participant.nickname }} ({{ p_data.final_score }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <!-- ▲▲▲ КОНЕЦ ИЗМЕНЕННОГО БЛОКА ▲▲▲ -->
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        </div>
+    </div>
+</form>
+
+                                                <!-- Детальная таблица с очками -->
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-hover text-center align-middle" style="font-size: 0.9em;">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th rowspan="2" class="align-middle">Участник</th>
+                                                                <th rowspan="2" class="align-middle">Судья</th>
+                                                                <th colspan="{{ criteria_list|length if criteria_list else 1 }}">Критерии</th>
+                                                                <th rowspan="2" class="align-middle">Оценка судьи</th>
+                                                                <th rowspan="2" class="align-middle">Итоговая оценка</th>
+                                                            </tr>
+                                                            <tr>
+                                                                {% for criterion in criteria_list %}<th>{{ criterion.name }}</th>{% else %}<th>-</th>{% endfor %}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for p_data in participants %}
+                                                                {% set rowspan_value = p_data.judge_evaluations|length if p_data.judge_evaluations else 1 %}
+                                                                {% set winner_class = 'table-warning' if p_data.confirmed_place else '' %}
+                                                                
+                                                                {% for eval in p_data.judge_evaluations %}
+                                                                <tr class="{{ winner_class }}">
+                                                                    {% if loop.first %}<td rowspan="{{ rowspan_value }}">{{ p_data.participant.nickname or p_data.participant.code }}{% if p_data.entry_number > 1 %}/{{ p_data.entry_number }}{% endif %}{% if p_data.confirmed_place %} <span class="badge bg-success">{{ p_data.confirmed_place }} место</span>{% endif %}</td>{% endif %}
+                                                                    <td>{{ eval.judge.nickname or eval.judge.code }}</td>
+                                                                    {% for criterion in criteria_list %}<td>{{ eval.scores_by_criterion.get(criterion.id, '-') }}</td>{% else %}<td>-</td>{% endfor %}
+                                                                    <td><strong>{{ eval.judge_avg }}</strong></td>
+                                                                    {% if loop.first %}<td rowspan="{{ rowspan_value }}" class="fw-bold fs-5">{{ p_data.final_score }}</td>{% endif %}
+                                                                </tr>
+                                                                {% else %}
+                                                                <tr class="{{ winner_class }}">
+                                                                    <td rowspan="{{ rowspan_value }}">{{ p_data.participant.nickname or p_data.participant.code }}{% if p_data.entry_number > 1 %}/{{ p_data.entry_number }}{% endif %}{% if p_data.confirmed_place %} <span class="badge bg-success">{{ p_data.confirmed_place }} место</span>{% endif %}</td>
+                                                                    <td colspan="{{ (criteria_list|length) + 2 }}" class="text-muted">Оценок нет</td>
+                                                                    <td class="fw-bold fs-5">{{ p_data.final_score }}</td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card card-body text-center text-muted">Нет данных для отображения.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

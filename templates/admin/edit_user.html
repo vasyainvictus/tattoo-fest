@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Изменение пользователя{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 30px auto; padding: 20px;">
+    <h1>Изменение пользователя: {{ user.code }}</h1>
+    <hr>
+
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <form method="POST" action="{{ url_for('admin.edit_user', user_id=user.id) }}">
+            <div style="margin-bottom: 15px;">
+                <label for="code">Уникальный код (нельзя изменить):</label>
+                <input type="text" id="code" name="code" required value="{{ user.code }}" readonly style="width: 100%; padding: 8px; box-sizing: border-box; background-color: #e9ecef;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="nickname">Никнейм (необязательно):</label>
+                <input type="text" id="nickname" name="nickname" value="{{ user.nickname or '' }}" style="width: 100%; padding: 8px; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="telegram_id">Telegram ID (необязательно):</label>
+                <input type="text" id="telegram_id" name="telegram_id" value="{{ user.telegram_id or '' }}" style="width: 100%; padding: 8px; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex-grow: 1;">
+                    <label for="role">Роль:</label>
+                    <select id="role" name="role" required style="width: 100%; padding: 8px;">
+                        <option value="participant" {% if user.role == 'participant' %}selected{% endif %}>Участник</option>
+                        <option value="judge" {% if user.role == 'judge' %}selected{% endif %}>Судья</option>
+                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Администратор</option>
+                    </select>
+                </div>
+                <div style="flex-grow: 1;">
+                    <label for="experience_category">Категория опыта (для участника):</label>
+                    <select id="experience_category" name="experience_category" style="width: 100%; padding: 8px;">
+                        <option value="" {% if not user.experience_category %}selected{% endif %}>-</option>
+                        <option value="junior" {% if user.experience_category == 'junior' %}selected{% endif %}>Юниор</option>
+                        <option value="pro" {% if user.experience_category == 'pro' %}selected{% endif %}>Про</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Сохранить</button>
+            <a href="{{ url_for('admin.manage_users') }}" style="margin-left: 15px; color: #6c757d;">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

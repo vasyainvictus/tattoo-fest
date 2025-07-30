@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Вход в систему{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 60px auto; padding: 30px; border-radius: 8px; background-color: #f8f9fa; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+
+    <h2 class="text-center mb-4">Вход в панель управления</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="mb-3">
+            <label for="code" class="form-label">Ваш уникальный код:</label>
+            <input type="text" id="code" name="code" required class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Войти</button>
+    </form>
+</div>
+{% endblock %}

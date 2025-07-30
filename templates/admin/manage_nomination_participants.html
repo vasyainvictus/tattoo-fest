@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Участники: {{ nomination.name }} ({{ CATEGORY_MAP.get(nomination.category, nomination.category) }}){% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 30px auto; padding: 20px;">
+    
+    <a href="{{ url_for('admin.manage_nominations') }}" style="color: #6c757d; text-decoration: none; display: inline-block; margin-bottom: 10px;">← Назад к списку номинаций</a>
+    
+    <h1>Участники в номинации: <br>
+        <span style="color: #007bff;">{{ nomination.name }}</span>
+    </h1>
+    <h4 style="color: #6c757d; margin-top: -10px;">
+        Категория: <strong>{{ CATEGORY_MAP.get(nomination.category, nomination.category) }}</strong> | 
+        День: <strong>{{ nomination.event_day.date.strftime('%d.%m.%Y') }}</strong> | 
+        Тип: <strong>{% if nomination.participant_type == 'both' %}Про & Юниор{% else %}{{ CATEGORY_MAP.get(nomination.participant_type, nomination.participant_type) }}{% endif %}</strong>
+    </h4>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+        <div style="padding: 15px; margin-bottom: 20px; border-radius: 4px; background-color: {% if category == 'error' %}#f2dede{% else %}#dff0d8{% endif %}; border-color: {% if category == 'error' %}#ebccd1{% else %}#d6e9c6{% endif %}; color: {% if category == 'error' %}#a94442{% else %}#3c763d{% endif %};" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div style="display: flex; gap: 30px; flex-wrap: wrap; margin-top: 20px;">
+        <div style="flex: 1; min-width: 300px;">
+            <h3>Зарегистрированные заявки ({{ nomination.participants|length }})</h3>
+            {% if nomination.participants %}
+                <ul style="list-style: none; padding: 0;">
+                    {% for p in nomination.participants | sort(attribute='user.code') | sort(attribute='entry_number') %}
+                    <li style="background-color: #f8f9fa; padding: 10px 15px; margin-bottom: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>
+                            <!-- ИЗМЕНЕНИЕ: Отображаем номер заявки -->
+                            <strong>{{ p.user.code }}{% if p.entry_number > 1 %}/{{ p.entry_number }}{% endif %}</strong>
+                            <small>({{ CATEGORY_MAP.get(p.user.experience_category, p.user.experience_category) }})</small>
+                        </span>
+                        <form action="{{ url_for('admin.unassign_participant', participation_id=p.id) }}" method="POST" onsubmit="return confirm('Удалить заявку {{ p.user.code }}/{{ p.entry_number }}?');">
+                            <button type="submit" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 16px;">× Удалить</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>В этой номинации пока нет ни одной заявки.</p>
+            {% endif %}
+        </div>
+
+        <div style="flex: 1; min-width: 300px; background-color: #f8f9fa; padding: 20px; border-radius: 5px; height: fit-content;">
+            <h3>Добавить заявку</h3>
+            <form method="POST" action="{{ url_for('admin.manage_nomination_participants', nomination_id=nomination.id) }}">
+                <div style="margin-bottom: 15px;">
+                    <label for="user_id">Выберите участника:</label>
+                    <select id="user_id" name="user_id" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+                        <option value="" disabled selected>-- Доступные участники --</option>
+                        {% for user in available_participants %}
+                            <option value="{{ user.id }}">{{ user.code }} ({{ CATEGORY_MAP.get(user.experience_category, user.experience_category) }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">Добавить заявку</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

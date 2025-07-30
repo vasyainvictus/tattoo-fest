@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}
+    Судейство: {{ contest.nomination_template.name }} ({{ CATEGORY_MAP.get(contest.category, contest.category) }})
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 30px auto; padding: 20px;">
+    
+    <a href="{{ url_for('main.dashboard') }}" style="color: #6c757d; text-decoration: none; display: inline-block; margin-bottom: 10px;">← Назад на панель управления</a>
+
+    <h1>Судейство</h1>
+    <h3 style="color: #6c757d; margin-top: -10px;">Конкурс: «{{ contest.nomination_template.name }}»</h3>
+    <p>
+        Категория: <strong>{{ CATEGORY_MAP.get(contest.category, contest.category) }}</strong> | 
+        День: <strong>{{ contest.day.date.strftime('%d.%m.%Y') }}, {{ contest.start_time.strftime('%H:%M') }}–{{ contest.end_time.strftime('%H:%M') }}</strong> | 
+        Тип участников: <strong>{{ CATEGORY_MAP.get(contest.nomination_template.participant_type, contest.nomination_template.participant_type) }}</strong>
+    </p>
+    <hr>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+        <div style="padding: 10px; margin-bottom: 15px; border-radius: 5px; color: {% if category == 'error' %}#721c24{% else %}#155724{% endif %}; background-color: {% if category == 'error' %}#f8d7da{% else %}#d4edda{% endif %};">
+            {{ message }}
+        </div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+    
+    {% if not is_judging_allowed %}
+        <div style="text-align: center; background-color: #fff3cd; color: #856404; padding: 20px; border-radius: 5px; border: 1px solid #ffeeba;">
+            <h4>Судейство еще не началось</h4>
+            <p>Вы сможете выставлять оценки начиная с <strong>{{ contest.start_time.strftime('%H:%M') }}</strong>.</p>
+        </div>
+    {% elif not participations %}
+        <p style="text-align: center; color: #6c757d; padding: 20px;">В этом конкурсе пока нет зарегистрированных участников для оценки.</p>
+    {% else %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #e9ecef;">
+                    <th style="padding: 10px; text-align: left;">Участник</th>
+                    {% for c in criteria %}
+                        <th style="padding: 10px; text-align: center;" title="{{ c.name }} (макс: {{c.max_score}})">{{ c.name }}</th>
+                    {% endfor %}
+                    <th style="padding: 10px; text-align: center;">Средний балл</th>
+                    <th style="padding: 10px; text-align: center; width: 15%;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in participations | sort(attribute='user.code') | sort(attribute='entry_number') %}
+                <form method="POST" action="{{ url_for('main.judging_page', contest_id=contest.id) }}">
+                    <input type="hidden" name="participation_id" value="{{ p.id }}">
+                    
+                    <tr style="border-bottom: 1px solid #dee2e6; {% if p.id in fully_scored_participation_ids %}background-color: #f8f9fa;{% endif %}">
+                        <td style="padding: 10px;">
+                            <strong>{{ p.user.nickname or p.user.code }}{% if p.entry_number > 1 %}/{{ p.entry_number }}{% endif %}</strong>
+                            <br>
+                            <small>({{ CATEGORY_MAP.get(p.user.experience_category, p.user.experience_category) }})</small>
+                        </td>
+                        
+                        {% for c in criteria %}
+                        <td style="padding: 10px; text-align: center;">
+                            <input type="number" 
+                                   name="scores[{{ p.id }}][{{ c.id }}]" 
+                                   min="0" 
+                                   max="{{ c.max_score }}" 
+                                   value="{{ scores_map.get((p.id, c.id), '') }}"
+                                   style="width: 70px; padding: 5px; text-align: center; border-radius: 4px; border: 1px solid #ccc;"
+                                   required
+                                   {% if p.id in fully_scored_participation_ids %}disabled{% endif %}>
+                        </td>
+                        {% endfor %}
+                        
+                        <td style="padding: 10px; text-align: center;">
+                            {% if avg_scores[p.id] is not none %}
+                                {{ avg_scores[p.id] }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td style="padding: 10px; text-align: center;">
+                            {% if p.id in fully_scored_participation_ids %}
+                                <span style="color: #28a745; font-weight: bold;">Оценено ✅</span>
+                            {% else %}
+                                <button type="submit" style="padding: 5px 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    Сохранить
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </form>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endblock %}

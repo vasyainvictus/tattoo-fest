@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Панель управления{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-4">
+    <div class="card shadow-sm p-4">
+        <h2 class="mb-3">
+            {% if user.role == 'admin' %}Панель Администратора
+            {% elif user.role == 'judge' %}Панель Судьи
+            {% else %}Личный кабинет Участника
+            {% endif %}
+        </h2>
+        <p class="text-muted">Добро пожаловать, <strong>{{ user.nickname or user.code }}</strong>!</p>
+        <hr>
+
+        {% if user.role == 'admin' %}
+        <div class="d-flex flex-wrap gap-3 mb-4">
+            <a class="btn {% if request.endpoint == 'admin.manage_festivals' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               href="{{ url_for('admin.manage_festivals') }}">Фестивали</a>
+
+            <a class="btn {% if request.endpoint == 'admin.manage_users' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               href="{{ url_for('admin.manage_users') }}">Пользователи</a>
+
+            <a class="btn {% if request.endpoint == 'admin.manage_nomination_templates' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               href="{{ url_for('admin.manage_nomination_templates') }}">Шаблоны Номинаций</a>
+
+            <a class="btn {% if 'criterion' in request.endpoint %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               href="{{ url_for('admin.manage_criteria') }}">Критерии</a>
+
+            <a class="btn {% if request.endpoint == 'admin.admin_results_view' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               href="{{ url_for('admin.admin_results_view') }}">Результаты</a>
+        </div>
+        {% endif %}
+
+        {# Общий блок расписания для всех ролей #}
+        <h4 class="mb-3">Общее расписание</h4>
+        {% if not schedule_items %}
+            <p class="text-muted">Расписание еще не составлено.</p>
+        {% else %}
+            {% set days = schedule_items | groupby('day.date') %}
+            {% for day_group in days %}
+                {% set date = day_group.grouper %}
+                {% set day_slots = day_group.list %}
+                <h5 class="mt-4">{{ date.strftime('%d.%m.%Y') }}</h5>
+
+                {% set time_groups = day_slots | groupby('start_time') %}
+                {% for time_group in time_groups %}
+                    {% set time = time_group.grouper %}
+                    {% set slots = time_group.list %}
+                    <div class="row mb-3">
+                        {% for slot in slots %}
+                        <div class="col-md-6 mb-3">
+                            <div class="p-3 border rounded h-100 {% if slot.id in highlight_slot_ids %}bg-warning-subtle border-warning{% else %}bg-light{% endif %}">
+
+                               <strong>{{ time.strftime('%H:%M') }} – {{ slot.end_time.strftime('%H:%M') }}</strong><br>
+                                {% if slot.type == 'judging' %}
+                                    Судейство: {{ slot.nomination_template.name }} <strong>({{ CATEGORY_MAP.get(slot.category, slot.category) }})</strong><br>
+                                    <small class="text-muted">Зона: {{ slot.zone or 'Не указана' }}</small>
+                                
+                                <!-- ▼▼▼ ИЗМЕНЕННЫЙ БЛОК ▼▼▼ -->
+                                {% elif slot.type == 'award' %}
+                                    Награждение: <strong>({{ CATEGORY_MAP.get(slot.category, 'Категория не указана') }})</strong><br>
+                                    <small class="text-muted">Зона: {{ slot.zone or 'Не указана' }}</small>
+                                <!-- ▲▲▲ КОНЕЦ ИЗМЕНЕННОГО БЛОКА ▲▲▲ -->
+
+                                {% elif slot.type == 'event' %}
+                                    Событие: {{ slot.event_title }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        {% endif %}
+
+        {% if user.role == 'participant' %}
+        <div class="mb-5 mt-4">
+            <h4 class="mb-3">Мои заявки</h4>
+            {% if not participant_participations %}
+                <p class="text-muted">Вы еще не зарегистрированы ни на один конкурс.</p>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Конкурс</th>
+                                <th>Статус</th>
+                                <th class="text-center">Оценки</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in participant_participations | sort(attribute='contest_slot.start_time') %}
+                            <tr>
+                                <td>
+                                    <strong>{{ p.contest_slot.nomination_template.name }}{% if p.entry_number > 1 %}/{{p.entry_number}}{% endif %}</strong><br>
+                                    <small class="text-muted">
+                                        Категория: {{ CATEGORY_MAP.get(p.contest_slot.category, p.contest_slot.category) }}<br>
+                                        {{ p.contest_slot.day.date.strftime('%d.%m.%Y') }}, {{ p.contest_slot.start_time.strftime('%H:%M') }}–{{ p.contest_slot.end_time.strftime('%H:%M') }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if p.contest_slot.status == 'pending' %}
+                                        <span class="text-secondary">Ожидает</span>
+                                    {% elif p.contest_slot.status == 'judging' %}
+                                        <span class="text-primary">Идет судейство</span>
+                                    {% elif p.contest_slot.status == 'completed' %}
+                                        <span class="text-success">Завершено</span>
+                                    {% elif p.contest_slot.status == 'awarded' %}
+                                        <span class="text-warning">Награжден</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if now >= p.contest_slot.end_time %}
+                                        <a href="{{ url_for('main.my_scores') }}#p-{{ p.id }}" class="btn btn-sm btn-outline-primary">Посмотреть</a>
+                                    {% else %}
+                                        <small class="text-muted">Недоступны</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if user.role == 'judge' %}
+        <div class="mb-5 mt-4">
+            <h4 class="mb-3">Требуется судейство</h4>
+            {% if not pending_contests %}
+                <p class="text-muted">Все назначенные конкурсы отсужены. Отличная работа!</p>
+            {% else %}
+                <div class="list-group mb-4">
+                    {% for contest in pending_contests %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ contest.nomination_template.name }}</strong><br>
+                            <small class="text-muted">
+                                Категория: {{ CATEGORY_MAP.get(contest.category, contest.category) }} |
+                                {{ contest.day.date.strftime('%d.%m.%Y') }}, {{ contest.start_time.strftime('%H:%M') }}–{{ contest.end_time.strftime('%H:%M') }} |
+                                Заявок: {{ contest.participants|length }}
+                            </small>
+                        </div>
+                        <a href="{{ url_for('main.judging_page', contest_id=contest.id) }}"
+                           class="btn btn-sm btn-primary">К судейству</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <h4 class="mb-3">Отсуженные конкурсы</h4>
+            {% if not judged_contests %}
+                <p class="text-muted">Вы еще не отсудили ни одного конкурса.</p>
+            {% else %}
+                <div class="list-group">
+                    {% for contest in judged_contests %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                        <div>
+                            <strong class="text-muted">{{ contest.nomination_template.name }}</strong><br>
+                            <small class="text-muted">
+                                Категория: {{ CATEGORY_MAP.get(contest.category, contest.category) }} |
+                                {{ contest.day.date.strftime('%d.%m.%Y') }}, {{ contest.start_time.strftime('%H:%M') }}–{{ contest.end_time.strftime('%H:%M') }}
+                            </small>
+                        </div>
+                        <a href="{{ url_for('main.judging_page', contest_id=contest.id) }}"
+                           class="btn btn-sm btn-outline-secondary">Посмотреть</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="text-end mt-4">
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-link text-danger">Выйти из системы</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

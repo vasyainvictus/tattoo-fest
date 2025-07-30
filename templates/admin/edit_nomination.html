@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование шаблона{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h2>Редактирование шаблона: "{{ template.name }}"</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.edit_nomination_template', template_id=template.id) }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Название номинации:</label>
+                    <input type="text" id="name" name="name" required value="{{ template.name }}" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="participant_type" class="form-label">Тип участников по умолчанию:</label>
+                    <select id="participant_type" name="participant_type" required class="form-select">
+                        <option value="both" {% if template.participant_type == 'both' %}selected{% endif %}>Про & Юниор (Все)</option>
+                        <option value="pro" {% if template.participant_type == 'pro' %}selected{% endif %}>Только Про</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Описание:</label>
+                    <textarea id="description" name="description" rows="2" class="form-control">{{ template.description or '' }}</textarea>
+                </div>
+                
+                <!-- ===== НОВЫЙ БЛОК: ВЫБОР КРИТЕРИЕВ ===== -->
+                <div class="mb-3">
+                    <label class="form-label">Критерии оценки для этой номинации:</label>
+                    {% if not all_criteria %}
+                        <p class="text-danger">Критерии не созданы. <a href="{{ url_for('admin.manage_criteria') }}">Создать критерии</a>.</p>
+                    {% else %}
+                        {% set selected_ids = template.criteria | map(attribute='id') | list %}
+                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            {% for criterion in all_criteria %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="criteria" value="{{ criterion.id }}" id="crit-edit-{{ criterion.id }}" {% if criterion.id in selected_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="crit-edit-{{ criterion.id }}">
+                                    {{ criterion.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('admin.manage_nomination_templates') }}" class="btn btn-outline-secondary">Отмена</a>
+                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

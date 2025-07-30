@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Управление фестивалем: {{ festival.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .btn-hover:hover {
+        opacity: 0.9;
+        filter: brightness(1.05);
+        transform: scale(1.03);
+        transition: all 0.2s ease;
+    }
+</style>
+
+<div class="container mt-5 mb-4">
+    <div class="card shadow-sm p-4">
+
+        <h2 class="mb-2">{{ festival.name }}</h2>
+        <p class="text-muted">Даты проведения: с {{ festival.start_date.strftime('%d-%m-%Y') }} по {{ festival.end_date.strftime('%d-%m-%Y') }}</p>
+
+        {# Flash messages (оставляем, они могут быть полезны) #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <hr class="my-4">
+
+        {# --- БЛОК ДОБАВЛЕНИЯ ДНЯ ПОЛНОСТЬЮ УДАЛЕН --- #}
+
+        <h4 class="mb-3">Список дней фестиваля</h4>
+        <p class="text-muted small mb-3">Для изменения количества дней или дат фестиваля, вернитесь на страницу "Управление фестивалями" и нажмите "Редактировать".</p>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 20%;">Порядковый номер</th>
+                        <th>Дата</th>
+                        {# --- КОЛОНКА "ДЕЙСТВИЯ" ТЕПЕРЬ НАЗЫВАЕТСЯ "РАСПИСАНИЕ" --- #}
+                        <th style="width: 20%;">Расписание</th> 
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in days %}
+                    <tr>
+                        <td>День {{ day.day_order }}</td>
+                        <td>{{ day.date.strftime('%d-%m-%Y') }}</td>
+                        <td>
+                            {# --- ОСТАЛАСЬ ТОЛЬКО ОДНА КНОПКА --- #}
+                            <a href="{{ url_for('admin.manage_day_schedule', day_id=day.id) }}" class="btn btn-primary btn-sm btn-hover">
+                                Управлять
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-muted text-center p-3">
+                            Дни для этого фестиваля еще не определены.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 text-end">
+            <a href="{{ url_for('admin.manage_festivals') }}" class="btn btn-outline-secondary btn-hover">Назад к списку фестивалей</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

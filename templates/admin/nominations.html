@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Управление Шаблонами Номинаций{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h2>Управление Шаблонами Номинаций</h2>
+            <p class="text-muted mb-0">Здесь создается общий справочник всех возможных номинаций фестиваля и их критериев оценки.</p>
+        </div>
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="bg-light p-4 rounded mb-5">
+                <h4 class="mb-3">Создать новый шаблон</h4>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название номинации:</label>
+                        <input type="text" id="name" name="name" required class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="participant_type" class="form-label">Тип участников по умолчанию:</label>
+                        <select id="participant_type" name="participant_type" required class="form-select">
+                            <option value="both" selected>Про и Юниор</option>
+                            <option value="pro">Только Про</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание (необязательно):</label>
+                        <textarea id="description" name="description" rows="2" class="form-control"></textarea>
+                    </div>
+                    
+                    <!-- ===== НОВЫЙ БЛОК: ВЫБОР КРИТЕРИЕВ ===== -->
+                    <div class="mb-3">
+                        <label class="form-label">Критерии оценки для этой номинации:</label>
+                        {% if not all_criteria %}
+                            <p class="text-danger">Критерии не созданы. <a href="{{ url_for('admin.manage_criteria') }}">Создать критерии</a>.</p>
+                        {% else %}
+                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            {% for criterion in all_criteria %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="criteria" value="{{ criterion.id }}" id="crit-{{ criterion.id }}">
+                                <label class="form-check-label" for="crit-{{ criterion.id }}">
+                                    {{ criterion.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success">Создать шаблон</button>
+                    </div>
+                </form>
+            </div>
+
+            <h4 class="mb-3">Список шаблонов</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Название и Критерии</th>
+                            <th class="text-center" style="width: 15%;">Тип участников</th>
+                            <th class="text-center" style="width: 20%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for template in templates %}
+                        <tr>
+                            <td>
+                                <strong>{{ template.name }}</strong>
+                                {% if template.description %}<p class="small text-muted mb-2">{{ template.description }}</p>{% endif %}
+                                <div class="mt-2">
+                                    {% for criterion in template.criteria %}
+                                        <span class="badge bg-secondary">{{ criterion.name }}</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">Критерии не заданы</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="text-center">{{ CATEGORY_MAP.get(template.participant_type, template.participant_type) }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('admin.edit_nomination_template', template_id=template.id) }}" class="btn btn-sm btn-secondary mb-1">Изменить</a>
+                                <form method="POST" action="{{ url_for('admin.delete_nomination_template', template_id=template.id) }}" onsubmit="return confirm('Вы уверены, что хотите удалить шаблон \'{{ template.name }}\'?');" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger mb-1">Удалить</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted p-3">Шаблоны номинаций еще не созданы.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+             <div class="text-end mt-4">
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">На главную</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

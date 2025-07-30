@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование фестиваля: {{ festival.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .btn-hover:hover {
+        opacity: 0.9;
+        filter: brightness(1.05);
+        transform: scale(1.03);
+        transition: all 0.2s ease;
+    }
+</style>
+
+<div class="container mt-5 mb-4">
+    <div class="card shadow-sm p-4">
+        <h2 class="mb-3">Редактирование фестиваля</h2>
+        <h4 class="text-muted mb-4">"{{ festival.name }}"</h4>
+
+        {# Flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {# Форма редактирования фестиваля #}
+        <div class="bg-light p-4 rounded">
+            <form method="POST" action="{{ url_for('admin.edit_festival', festival_id=festival.id) }}">
+                <div class="row gy-3">
+                    <div class="col-md-12">
+                        <label for="name" class="form-label">Название фестиваля:</label>
+                        <input type="text" id="name" name="name" class="form-control" value="{{ festival.name }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="start_date" class="form-label">Дата начала:</label>
+                        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ festival.start_date.isoformat() }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="end_date" class="form-label">Дата окончания:</label>
+                        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ festival.end_date.isoformat() }}" required>
+                    </div>
+                </div>
+                <div class="mt-4 d-flex justify-content-between">
+                    <a href="{{ url_for('admin.manage_festivals') }}" class="btn btn-outline-secondary btn-hover">Отмена</a>
+                    <button type="submit" class="btn btn-primary btn-hover">Сохранить изменения</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

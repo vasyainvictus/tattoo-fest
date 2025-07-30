@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Судьи конкурса: {{ contest_slot.nomination_template.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 30px auto; padding: 20px;">
+
+    <a href="{{ url_for('admin.manage_day_schedule', day_id=contest_slot.day_id) }}"
+       class="btn btn-outline-secondary btn-hover mb-3">
+        ← Назад к расписанию
+    </a>
+
+    <h1 class="mb-1">Назначение судей</h1>
+    <h3 class="text-primary mt-1">{{ contest_slot.nomination_template.name }}</h3>
+    <h5 class="text-muted mt-0">
+        Категория: <strong>{{ CATEGORY_MAP.get(contest_slot.category, contest_slot.category) }}</strong> |
+        День: <strong>{{ contest_slot.day.date.strftime('%d.%m.%Y') }}</strong>
+    </h5>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row mt-4">
+        <!-- Назначенные судьи -->
+        <div class="col-md-6">
+            <div class="border rounded p-3 bg-light">
+                <h5 class="mb-3">Назначенные судьи ({{ contest_slot.judge_assignments|length }})</h5>
+                {% if contest_slot.judge_assignments %}
+                    <ul class="list-group">
+                        {% for assignment in contest_slot.judge_assignments | sort(attribute='judge.code') %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><strong>{{ assignment.judge.nickname or assignment.judge.code }}</strong></span>
+                                <form action="{{ url_for('admin.delete_judge_assignment', assignment_id=assignment.id) }}" method="POST" onsubmit="return confirm('Снять судью {{ assignment.judge.code }} с этого конкурса?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Снять</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mt-3">На этот конкурс еще не назначены судьи.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Назначить судью -->
+        <div class="col-md-6">
+            <div class="border rounded p-4 bg-light">
+                <h5 class="mb-3">Назначить судью</h5>
+                {% if available_judges %}
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="judge_id" class="form-label">Выберите судью:</label>
+                            <select id="judge_id" name="judge_id" class="form-select" required>
+                                <option value="" disabled selected>-- Доступные судьи --</option>
+                                {% for judge in available_judges %}
+                                    <option value="{{ judge.id }}">{{ judge.nickname or judge.code }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Назначить</button>
+                    </form>
+                {% else %}
+                    <p class="text-muted">Все доступные судьи уже назначены на этот конкурс, либо не созданы в системе.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
